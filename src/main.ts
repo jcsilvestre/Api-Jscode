@@ -11,6 +11,44 @@ async function bootstrap() {
     
     const app = await NestFactory.create(AppModule);
     
+    // Configurar CORS para permitir requisições do frontend e mobile
+    app.enableCors({
+      origin: [
+        'http://localhost:8081', 
+        'http://127.0.0.1:8081',
+        // Permitir aplicações mobile (React Native, Flutter, etc.)
+        'http://localhost:3000',
+        'http://10.0.2.2:3000', // Android emulator
+        'http://localhost:19006', // Expo
+        'capacitor://localhost', // Capacitor
+        'ionic://localhost', // Ionic
+        // Permitir qualquer origem para desenvolvimento mobile
+        /^https?:\/\/localhost(:\d+)?$/,
+        /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
+        /^https?:\/\/10\.0\.2\.2(:\d+)?$/,
+        /^https?:\/\/192\.168\.\d+\.\d+(:\d+)?$/, // Rede local
+      ],
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: [
+        'Content-Type', 
+        'Authorization', 
+        'X-Requested-With',
+        'Accept',
+        'Origin',
+        'User-Agent',
+        'DNT',
+        'Cache-Control',
+        'X-Mx-ReqToken',
+        'Keep-Alive',
+        'X-Requested-With',
+        'If-Modified-Since',
+      ],
+      credentials: true,
+      optionsSuccessStatus: 200, // Para suporte a navegadores legados
+      preflightContinue: false,
+    });
+    logger.log('🌐 CORS configurado para web e mobile');
+    
     // Configurar prefixo global da API
     app.setGlobalPrefix('v1');
     logger.log('🔗 Prefixo global configurado: /v1');

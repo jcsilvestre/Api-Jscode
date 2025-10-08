@@ -27,7 +27,13 @@ export class AuthService {
   ) {}
 
   private generateToken(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    // Gerar token alfanumérico de 9 caracteres
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let token = '';
+    for (let i = 0; i < 9; i++) {
+      token += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return token;
   }
 
   async register(registerDto: RegisterDto): Promise<{ message: string }> {
