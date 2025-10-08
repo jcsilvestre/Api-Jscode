@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JCS Code - Bem-vindo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            padding: 3rem;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 2s infinite;
+        }
+
+        .success-icon svg {
+            width: 40px;
+            height: 40px;
+            fill: white;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .logo {
+            margin-bottom: 2rem;
+        }
+
+        .logo h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .welcome-message {
+            margin-bottom: 2rem;
+        }
+
+        .welcome-message h2 {
+            color: #333;
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .welcome-message p {
+            color: #666;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .user-info {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+        }
+
+        .user-info h3 {
+            color: #333;
+            margin-bottom: 1rem;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #e1e5e9;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .info-value {
+            color: #333;
+        }
+
+        .tenant-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e1e5e9;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .footer {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e1e5e9;
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">
+            <svg viewBox="0 0 24 24">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+            </svg>
+        </div>
+
+        <div class="logo">
+            <h1>JCS Code</h1>
+        </div>
+
+        <div class="welcome-message">
+            <h2>Bem-vindo!</h2>
+            <p>Seu cadastro foi realizado com sucesso e sua conta foi verificada.</p>
+            <p>Você agora faz parte da plataforma JCS Code.</p>
+        </div>
+
+        <div class="user-info" id="userInfo">
+            <h3>Informações da Conta</h3>
+            <div class="info-item">
+                <span class="info-label">Nome:</span>
+                <span class="info-value" id="userName">Carregando...</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">E-mail:</span>
+                <span class="info-value" id="userEmail">Carregando...</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Status:</span>
+                <span class="info-value">
+                    <span class="tenant-badge" id="userRole">Tenant Master</span>
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Data de Cadastro:</span>
+                <span class="info-value" id="registrationDate">Carregando...</span>
+            </div>
+        </div>
+
+        <div class="actions">
+            <a href="#" class="btn btn-primary" id="dashboardBtn">Acessar Dashboard</a>
+            <a href="index.html" class="btn btn-secondary">Fazer Novo Cadastro</a>
+        </div>
+
+        <div class="footer">
+            <p>© 2025 JCS Code. Todos os direitos reservados.</p>
+        </div>
+    </div>
+
+    <script>
+        // Função para obter parâmetros da URL
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            const regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            const results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        // Função para carregar informações do usuário
+        function loadUserInfo() {
+            // Por enquanto, vamos usar dados mockados ou do localStorage
+            // Em uma implementação real, isso viria de uma API
+            
+            const userData = {
+                name: localStorage.getItem('userName') || 'Usuário',
+                email: localStorage.getItem('userEmail') || 'usuario@exemplo.com',
+                registrationDate: new Date().toLocaleDateString('pt-BR')
+            };
+
+            document.getElementById('userName').textContent = userData.name;
+            document.getElementById('userEmail').textContent = userData.email;
+            document.getElementById('registrationDate').textContent = userData.registrationDate;
+        }
+
+        // Função para configurar ações
+        function setupActions() {
+            const dashboardBtn = document.getElementById('dashboardBtn');
+            
+            dashboardBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                alert('Dashboard em desenvolvimento!\n\nComo Tenant Master, você poderá:\n- Gerenciar usuários\n- Configurar permissões\n- Visualizar relatórios\n- Administrar o sistema');
+            });
+        }
+
+        // Inicialização da página
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUserInfo();
+            setupActions();
+
+            // Animação de entrada
+            const container = document.querySelector('.container');
+            container.style.opacity = '0';
+            container.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                container.style.transition = 'all 0.5s ease';
+                container.style.opacity = '1';
+                container.style.transform = 'translateY(0)';
+            }, 100);
+        });
+
+        // Salvar dados do usuário no localStorage se vieram da URL
+        const userName = getUrlParameter('name');
+        const userEmail = getUrlParameter('email');
+        
+        if (userName) localStorage.setItem('userName', userName);
+        if (userEmail) localStorage.setItem('userEmail', userEmail);
+    </script>
+</body>
+</html>

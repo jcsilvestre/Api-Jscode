@@ -179,6 +179,9 @@ async function bootstrap() {
     logger.log('   - GET    /v1/uga     - Auditoria de vínculos usuário-grupo');
     logger.log('   - GET    /v1/uiv     - Convites de usuários (User Invite Vector)');
     logger.log('   - GET    /v1/usrx    - Sessões de usuários (User Session Registry Exchange)');
+    logger.log('   - POST   /v1/auth/register - Registro de usuário com token por email');
+    logger.log('   - POST   /v1/auth/verify   - Verificação de token de registro');
+    logger.log('   - POST   /v1/auth/resend   - Reenvio de token de verificação');
     logger.log('💡 Use Postman ou curl para testar a API');
     
   } catch (error) {

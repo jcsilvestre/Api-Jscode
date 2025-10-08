@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
@@ -13,9 +14,14 @@ import { UserGroupsAuditModule } from './user-groups-audit/user-groups-audit.mod
 import { TenantOwnershipHistoryModule } from './tenant-ownership-history/tenant-ownership-history.module';
 import { EmailModule } from './email/email.module';
 import { DatabaseViewsModule } from './database-views/database-views.module';
+import { AuthModule } from './auth/auth.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST || 'localhost',
@@ -24,9 +30,10 @@ import { DatabaseViewsModule } from './database-views/database-views.module';
       password: process.env.DB_PASSWORD || '123456',
       database: process.env.DB_DATABASE || 'jcscode',
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: process.env.NODE_ENV !== 'production' ? (process.env.DB_SYNCHRONIZE === 'true') : false,
+      synchronize: false, // Desabilitando sincronização automática para evitar conflitos com views
       logging: process.env.DB_LOGGING === 'true' || true, // Enable logging to see SQL queries and errors
     }),
+    RedisModule,
     UsersModule,
     TenantsModule,
     GroupsModule,
@@ -38,6 +45,7 @@ import { DatabaseViewsModule } from './database-views/database-views.module';
     TenantOwnershipHistoryModule,
     EmailModule,
     DatabaseViewsModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

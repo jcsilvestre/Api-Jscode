@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JCS Code - Cadastro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .logo h1 {
+            color: #333;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .logo p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e1e5e9;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="password"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .message {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .token-section {
+            display: none;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e1e5e9;
+        }
+
+        .token-input {
+            text-align: center;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .resend-link {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .resend-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .resend-link a:hover {
+            text-decoration: underline;
+        }
+
+        .timer {
+            text-align: center;
+            margin-top: 0.5rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>JCS Code</h1>
+            <p>Sistema de Autenticação</p>
+        </div>
+
+        <form id="registerForm">
+            <div class="form-group">
+                <label for="name">Nome Completo</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+
+            <button type="submit" class="btn" id="registerBtn">Cadastrar</button>
+        </form>
+
+        <div class="token-section" id="tokenSection">
+            <div class="form-group">
+                <label for="token">Digite o código de verificação (9 dígitos)</label>
+                <input type="text" id="token" name="token" class="token-input" maxlength="9" placeholder="ABC123XYZ">
+            </div>
+
+            <button type="button" class="btn" id="verifyBtn">Verificar Código</button>
+
+            <div class="timer" id="timer"></div>
+
+            <div class="resend-link">
+                <a href="#" id="resendLink" style="display: none;">Solicitar novo código</a>
+            </div>
+        </div>
+
+        <div id="message" class="message" style="display: none;"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/v1';
+        let tokenTimer;
+        let tokenExpiry;
+
+        // Elementos do DOM
+        const registerForm = document.getElementById('registerForm');
+        const tokenSection = document.getElementById('tokenSection');
+        const messageDiv = document.getElementById('message');
+        const registerBtn = document.getElementById('registerBtn');
+        const verifyBtn = document.getElementById('verifyBtn');
+        const resendLink = document.getElementById('resendLink');
+        const timerDiv = document.getElementById('timer');
+
+        // Função para mostrar mensagens
+        function showMessage(text, type = 'error') {
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+        }
+
+        // Função para esconder mensagens
+        function hideMessage() {
+            messageDiv.style.display = 'none';
+        }
+
+        // Função para iniciar timer de expiração do token
+        function startTokenTimer() {
+            tokenExpiry = Date.now() + (5 * 60 * 1000); // 5 minutos
+            
+            tokenTimer = setInterval(() => {
+                const remaining = tokenExpiry - Date.now();
+                
+                if (remaining <= 0) {
+                    clearInterval(tokenTimer);
+                    timerDiv.textContent = 'Código expirado';
+                    resendLink.style.display = 'inline';
+                    verifyBtn.disabled = true;
+                } else {
+                    const minutes = Math.floor(remaining / 60000);
+                    const seconds = Math.floor((remaining % 60000) / 1000);
+                    timerDiv.textContent = `Código expira em: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                }
+            }, 1000);
+        }
+
+        // Função para cadastrar usuário
+        async function registerUser(userData) {
+            try {
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(userData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('Cadastro realizado! Verifique seu e-mail para o código de verificação.', 'success');
+                    registerForm.style.display = 'none';
+                    tokenSection.style.display = 'block';
+                    startTokenTimer();
+                } else {
+                    showMessage(data.message || 'Erro ao realizar cadastro');
+                }
+            } catch (error) {
+                showMessage('Erro de conexão com o servidor');
+                console.error('Erro:', error);
+            }
+        }
+
+        // Função para verificar token
+        async function verifyToken(token, email) {
+            try {
+                const response = await fetch(`${API_BASE}/auth/verify`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ token, email })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('Verificação realizada com sucesso! Redirecionando...', 'success');
+                    setTimeout(() => {
+                        window.location.href = 'welcome.html';
+                    }, 2000);
+                } else {
+                    showMessage(data.message || 'Código inválido');
+                }
+            } catch (error) {
+                showMessage('Erro de conexão com o servidor');
+                console.error('Erro:', error);
+            }
+        }
+
+        // Função para reenviar token
+        async function resendToken(email) {
+            try {
+                const response = await fetch(`${API_BASE}/auth/resend`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('Novo código enviado para seu e-mail!', 'success');
+                    resendLink.style.display = 'none';
+                    verifyBtn.disabled = false;
+                    startTokenTimer();
+                } else {
+                    showMessage(data.message || 'Erro ao reenviar código');
+                }
+            } catch (error) {
+                showMessage('Erro de conexão com o servidor');
+                console.error('Erro:', error);
+            }
+        }
+
+        // Event listeners
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideMessage();
+
+            const formData = new FormData(registerForm);
+            const userData = {
+                name: formData.get('name'),
+                email: formData.get('email'),
+                password: formData.get('password')
+            };
+
+            registerBtn.disabled = true;
+            registerBtn.textContent = 'Cadastrando...';
+
+            await registerUser(userData);
+
+            registerBtn.disabled = false;
+            registerBtn.textContent = 'Cadastrar';
+        });
+
+        verifyBtn.addEventListener('click', async () => {
+            hideMessage();
+            const token = document.getElementById('token').value.trim();
+            const email = document.getElementById('email').value;
+
+            if (!token || token.length !== 9) {
+                showMessage('Digite um código válido de 9 caracteres');
+                return;
+            }
+
+            verifyBtn.disabled = true;
+            verifyBtn.textContent = 'Verificando...';
+
+            await verifyToken(token, email);
+
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = 'Verificar Código';
+        });
+
+        resendLink.addEventListener('click', async (e) => {
+            e.preventDefault();
+            hideMessage();
+            const email = document.getElementById('email').value;
+            await resendToken(email);
+        });
+
+        // Formatação automática do campo de token
+        document.getElementById('token').addEventListener('input', (e) => {
+            e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        });
+    </script>
+</body>
+</html>

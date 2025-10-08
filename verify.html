@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificação de Token - JCS Code</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+
+        .email-display {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            color: #333;
+            font-weight: 500;
+            border: 2px solid #e1e5e9;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 18px;
+            text-align: center;
+            letter-spacing: 3px;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: border-color 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .timer {
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .timer.warning {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .instructions {
+            background: #e7f3ff;
+            border: 1px solid #b8daff;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 25px;
+            color: #004085;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">Verificação</div>
+        <div class="subtitle">Digite o código recebido por email</div>
+        
+        <div class="instructions">
+            📧 Verifique sua caixa de entrada (e spam) para o código de 9 dígitos
+        </div>
+
+        <div class="email-display" id="emailDisplay">
+            Carregando email...
+        </div>
+        
+        <form id="verifyForm">
+            <div class="form-group">
+                <label for="token">Código de Verificação:</label>
+                <input type="text" id="token" name="token" maxlength="9" placeholder="ABC123XYZ" required>
+            </div>
+            
+            <button type="submit" class="btn btn-primary" id="verifyBtn">Verificar Código</button>
+            <button type="button" class="btn btn-secondary" id="resendBtn">Reenviar Código</button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p id="loadingText">Verificando código...</p>
+        </div>
+
+        <div id="message"></div>
+
+        <div class="timer" id="timer">
+            Código válido por: <span id="timeLeft">5:00</span>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/v1/auth';
+        let userEmail = '';
+        let timeLeft = 300; // 5 minutos em segundos
+        let timerInterval;
+        
+        // Extrair email da URL
+        function getEmailFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('email') || '';
+        }
+        
+        // Inicializar página
+        function init() {
+            userEmail = getEmailFromUrl();
+            if (userEmail) {
+                document.getElementById('emailDisplay').textContent = userEmail;
+                startTimer();
+            } else {
+                showMessage('Email não encontrado. Feche esta janela e tente novamente.', 'error');
+            }
+        }
+        
+        // Timer de expiração
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    showMessage('Código expirado. Clique em "Reenviar Código" para obter um novo.', 'error');
+                    document.getElementById('verifyBtn').disabled = true;
+                }
+            }, 1000);
+        }
+        
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            const display = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('timeLeft').textContent = display;
+            
+            const timerElement = document.getElementById('timer');
+            if (timeLeft <= 60) {
+                timerElement.classList.add('warning');
+            }
+        }
+        
+        // Verificar token
+        document.getElementById('verifyForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const token = document.getElementById('token').value.trim().toUpperCase();
+            const verifyBtn = document.getElementById('verifyBtn');
+            const loading = document.getElementById('loading');
+            const messageDiv = document.getElementById('message');
+            
+            if (!token || token.length !== 9) {
+                showMessage('Por favor, digite um código válido de 9 caracteres.', 'error');
+                return;
+            }
+            
+            // Mostrar loading
+            verifyBtn.disabled = true;
+            loading.style.display = 'block';
+            document.getElementById('loadingText').textContent = 'Verificando código...';
+            messageDiv.innerHTML = '';
+            
+            try {
+                const response = await fetch(`${API_BASE}/verify`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: userEmail, token })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showMessage(data.message, 'success');
+                    clearInterval(timerInterval);
+                    // Fechar janela após 3 segundos
+                    setTimeout(() => {
+                        window.close();
+                    }, 3000);
+                } else {
+                    showMessage(data.message || 'Código inválido. Tente novamente.', 'error');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                showMessage('Erro de conexão. Verifique se o servidor está rodando.', 'error');
+            } finally {
+                verifyBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+        
+        // Reenviar código
+        document.getElementById('resendBtn').addEventListener('click', async function() {
+            const resendBtn = document.getElementById('resendBtn');
+            const loading = document.getElementById('loading');
+            const messageDiv = document.getElementById('message');
+            
+            resendBtn.disabled = true;
+            loading.style.display = 'block';
+            document.getElementById('loadingText').textContent = 'Reenviando código...';
+            messageDiv.innerHTML = '';
+            
+            try {
+                const response = await fetch(`${API_BASE}/resend`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: userEmail })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage(data.message, 'success');
+                    // Resetar timer
+                    clearInterval(timerInterval);
+                    timeLeft = 300;
+                    document.getElementById('verifyBtn').disabled = false;
+                    document.getElementById('timer').classList.remove('warning');
+                    startTimer();
+                    // Limpar campo de token
+                    document.getElementById('token').value = '';
+                } else {
+                    showMessage(data.message || 'Erro ao reenviar código. Tente novamente.', 'error');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                showMessage('Erro de conexão. Verifique se o servidor está rodando.', 'error');
+            } finally {
+                resendBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+        
+        // Formatar input do token
+        document.getElementById('token').addEventListener('input', function(e) {
+            e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        });
+        
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = `<div class="message ${type}">${message}</div>`;
+        }
+        
+        // Inicializar quando a página carregar
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
