@@ -3,7 +3,7 @@ import { UserSessionsService } from './user-sessions.service';
 import { CreateUserSessionDto } from './dto/create-user-session.dto';
 import { UpdateUserSessionDto } from './dto/update-user-session.dto';
 
-@Controller('usrx')
+@Controller('usx')
 export class UserSessionsController {
   constructor(private readonly userSessionsService: UserSessionsService) {}
 

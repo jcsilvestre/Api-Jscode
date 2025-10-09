@@ -11,12 +11,16 @@ import {
   UsePipes,
   HttpStatus,
   HttpCode,
+  UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { RouteProtectionGuard } from '../common/guards/route-protection.guard';
+import { IpBlockingGuard } from '../common/guards/ip-blocking.guard';
 
 @Controller('umx')
+@UseGuards(RouteProtectionGuard, IpBlockingGuard)
 export class UsersController {
   private readonly logger = new Logger(UsersController.name);
 

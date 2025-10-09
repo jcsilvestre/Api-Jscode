@@ -3,7 +3,7 @@ import { UserInvitationsService } from './user-invitations.service';
 import { CreateUserInvitationDto } from './dto/create-user-invitation.dto';
 import { UpdateUserInvitationDto } from './dto/update-user-invitation.dto';
 
-@Controller('uiv')
+@Controller('uix')
 export class UserInvitationsController {
   constructor(private readonly userInvitationsService: UserInvitationsService) {}
 

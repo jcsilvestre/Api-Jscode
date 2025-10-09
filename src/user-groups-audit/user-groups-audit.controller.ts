@@ -3,7 +3,7 @@ import { UserGroupsAuditService } from './user-groups-audit.service';
 import { CreateUserGroupsAuditDto } from './dto/create-user-groups-audit.dto';
 import { UpdateUserGroupsAuditDto } from './dto/update-user-groups-audit.dto';
 
-@Controller('uga')
+@Controller('ugax')
 export class UserGroupsAuditController {
   private readonly logger = new Logger(UserGroupsAuditController.name);
 

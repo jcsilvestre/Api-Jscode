@@ -1,9 +1,26 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { DatabaseViewsService } from './database-views.service';
 
-@Controller('database-views')
+@Controller('dbv')
 export class DatabaseViewsController {
   constructor(private readonly databaseViewsService: DatabaseViewsService) {}
+
+  @Get()
+  getAvailableViews() {
+    return {
+      message: 'Database Views API',
+      endpoints: [
+        'GET /v1/dbv/active-users - Lista usuários ativos',
+        'GET /v1/dbv/active-users/:uuid - Busca usuário ativo por UUID',
+        'GET /v1/dbv/groups-with-member-count - Lista grupos com contagem de membros',
+        'GET /v1/dbv/groups-with-member-count/:id - Busca grupo por ID',
+        'GET /v1/dbv/groups-with-member-count/tenant/:tenantName - Lista grupos por tenant',
+        'GET /v1/dbv/tenant-stats - Estatísticas de tenants',
+        'GET /v1/dbv/tenant-stats/:id - Estatísticas por ID',
+        'GET /v1/dbv/tenant-stats/slug/:slug - Estatísticas por slug'
+      ]
+    };
+  }
 
   @Get('active-users')
   getActiveUsers() {

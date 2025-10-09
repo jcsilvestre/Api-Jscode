@@ -1,7 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe, Logger, RequestMethod } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
+import * as bcrypt from 'bcrypt';
+import helmet from 'helmet';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { SecurityLoggingInterceptor } from './common/interceptors/security-logging.interceptor';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -11,23 +18,79 @@ async function bootstrap() {
     
     const app = await NestFactory.create(AppModule);
     
+    // Configurar Helmet para headers de segurança avançados
+    app.use(helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"], // Permitir estilos inline para compatibilidade
+          scriptSrc: ["'self'", "'strict-dynamic'"], // Usar strict-dynamic para melhor segurança
+          imgSrc: ["'self'", "data:", "https:", "blob:"],
+          fontSrc: ["'self'", "https:", "data:"],
+          connectSrc: ["'self'", "https:", "wss:", "ws:"], // Para WebSockets e APIs
+          mediaSrc: ["'self'", "https:", "data:"],
+          objectSrc: ["'none'"], // Bloquear objetos embed
+          frameSrc: ["'none'"], // Bloquear iframes
+          baseUri: ["'self'"], // Restringir base URI
+          formAction: ["'self'"], // Restringir ações de formulário
+          upgradeInsecureRequests: [], // Forçar HTTPS em produção
+        },
+        reportOnly: false, // Definir como true para apenas reportar violações
+      },
+      crossOriginEmbedderPolicy: false, // Para compatibilidade com mobile
+      crossOriginOpenerPolicy: { policy: "same-origin" },
+      crossOriginResourcePolicy: { policy: "cross-origin" }, // Para APIs públicas
+      dnsPrefetchControl: { allow: false },
+      frameguard: { action: 'deny' }, // Prevenir clickjacking
+      hidePoweredBy: true, // Ocultar header X-Powered-By
+      hsts: {
+        maxAge: 31536000, // 1 ano
+        includeSubDomains: true,
+        preload: true,
+      },
+      ieNoOpen: true,
+      noSniff: true, // X-Content-Type-Options: nosniff
+      originAgentCluster: true,
+      permittedCrossDomainPolicies: false,
+      referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+      xssFilter: true, // X-XSS-Protection
+    }));
+    logger.log('🔒 Helmet configurado para segurança');
+    
+    // Configurar cookie parser
+    app.use(cookieParser());
+    logger.log('🍪 Cookie parser configurado');
+    
     // Configurar CORS para permitir requisições do frontend e mobile
+    const configService = app.get(ConfigService);
+    const isProduction = configService.get('NODE_ENV') === 'production';
+    
+    const corsOrigins = isProduction ? [
+      // Domínios de produção
+      'https://www.jcscode.com',
+      'https://jcscode.com',
+      'https://app.jcscode.com',
+      // Aplicações mobile em produção
+      'capacitor://localhost',
+      'ionic://localhost',
+    ] : [
+      // Desenvolvimento local
+      'http://localhost:8081', 
+      'http://127.0.0.1:8081',
+      'http://localhost:3000',
+      'http://10.0.2.2:3000', // Android emulator
+      'http://localhost:19006', // Expo
+      'capacitor://localhost', // Capacitor
+      'ionic://localhost', // Ionic
+      // Permitir qualquer origem para desenvolvimento mobile
+      /^https?:\/\/localhost(:\d+)?$/,
+      /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
+      /^https?:\/\/10\.0\.2\.2(:\d+)?$/,
+      /^https?:\/\/192\.168\.\d+\.\d+(:\d+)?$/, // Rede local
+    ];
+
     app.enableCors({
-      origin: [
-        'http://localhost:8081', 
-        'http://127.0.0.1:8081',
-        // Permitir aplicações mobile (React Native, Flutter, etc.)
-        'http://localhost:3000',
-        'http://10.0.2.2:3000', // Android emulator
-        'http://localhost:19006', // Expo
-        'capacitor://localhost', // Capacitor
-        'ionic://localhost', // Ionic
-        // Permitir qualquer origem para desenvolvimento mobile
-        /^https?:\/\/localhost(:\d+)?$/,
-        /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
-        /^https?:\/\/10\.0\.2\.2(:\d+)?$/,
-        /^https?:\/\/192\.168\.\d+\.\d+(:\d+)?$/, // Rede local
-      ],
+      origin: corsOrigins,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
       allowedHeaders: [
         'Content-Type', 
@@ -49,18 +112,42 @@ async function bootstrap() {
     });
     logger.log('🌐 CORS configurado para web e mobile');
     
-    // Configurar prefixo global da API
-    app.setGlobalPrefix('v1');
-    logger.log('🔗 Prefixo global configurado: /v1');
+    // Configurar prefixo global da API apenas para rotas v1
+    // Deixar /health e outras rotas básicas sem prefixo
+    app.setGlobalPrefix('v1', {
+      exclude: [
+        { path: 'health', method: RequestMethod.GET },
+        { path: '', method: RequestMethod.GET },
+        { path: 'docs', method: RequestMethod.GET },
+      ]
+    });
+    logger.log('🔗 Prefixo global configurado: /v1 (excluindo health, docs e raiz)');
     
-    // Configurar pipes globais para validação
+    // Configurar pipes globais para validação e sanitização
     app.useGlobalPipes(new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
+      whitelist: true, // Remove propriedades não definidas no DTO
+      forbidNonWhitelisted: true, // Rejeita requisições com propriedades extras
+      transform: true, // Transforma automaticamente tipos
+      transformOptions: {
+        enableImplicitConversion: true, // Conversão automática de tipos
+      },
+      disableErrorMessages: process.env.NODE_ENV === 'production', // Oculta detalhes em produção
+      validateCustomDecorators: true, // Valida decorators customizados
+      stopAtFirstError: false, // Mostra todos os erros de validação
     }));
     
     logger.log('✅ Pipes de validação configurados');
+    
+    // Configurar interceptors globais
+    app.useGlobalInterceptors(
+      new LoggingInterceptor(),
+      new SecurityLoggingInterceptor(),
+    );
+    logger.log('📊 Interceptors de logging e segurança configurados');
+    
+    // Configurar filtro global de exceções
+    app.useGlobalFilters(new AllExceptionsFilter());
+    logger.log('🛡️ Filtro global de exceções configurado');
     
     // Verificar conexão e dados do banco
     const dataSource = app.get(DataSource);
@@ -114,26 +201,26 @@ async function bootstrap() {
       } else {
         logger.warn('⚠️  Tabela users está vazia! Criando dados de exemplo...');
         
-        // Criar dados de exemplo
+        // Criar dados de exemplo com senhas hasheadas
         const sampleUsers = [
           {
             full_name: 'Junio Silva',
             email: 'junio@exemplo.com',
-            password_hash: 'senha123',
+            password_hash: await bcrypt.hash('senha123', 12),
             is_verified: true,
             is_active: true
           },
           {
             full_name: 'Maria Santos',
             email: 'maria@exemplo.com',
-            password_hash: 'senha456',
+            password_hash: await bcrypt.hash('senha456', 12),
             is_verified: true,
             is_active: true
           },
           {
             full_name: 'Pedro Oliveira',
             email: 'pedro@exemplo.com',
-            password_hash: 'senha789',
+            password_hash: await bcrypt.hash('senha789', 12),
             is_verified: false,
             is_active: true
           }
@@ -205,8 +292,14 @@ async function bootstrap() {
     logger.log('   - Database: postgres');
     logger.log('   - Username: postgres');
     
-    logger.log(`🌐 Aplicação rodando em: http://${host}:${port}`);
-    logger.log(`🌍 Acesso na rede local: http://[SEU_IP]:${port}`);
+    const protocol = isProduction ? 'https' : 'http';
+    const baseUrl = isProduction ? 'api.jcscode.com' : `localhost:${port}`;
+    const appUrl = `${protocol}://${baseUrl}`;
+    
+    logger.log(`🌐 Aplicação rodando em: ${appUrl}`);
+    if (!isProduction) {
+      logger.log(`🌍 Acesso na rede local: http://[SEU_IP]:${port}`);
+    }
     logger.log('📋 Endpoints disponíveis com novos aliases:');
     logger.log('   - GET    /v1/umx     - Listar todos os usuários (User Matrix Exchange)');
     logger.log('   - GET    /v1/tnt     - Listar todos os tenants');

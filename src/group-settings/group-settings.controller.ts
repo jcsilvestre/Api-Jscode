@@ -3,7 +3,7 @@ import { GroupSettingsService } from './group-settings.service';
 import { CreateGroupSettingsDto } from './dto/create-group-settings.dto';
 import { UpdateGroupSettingsDto } from './dto/update-group-settings.dto';
 
-@Controller('gpcfg')
+@Controller('gsx')
 export class GroupSettingsController {
   constructor(private readonly groupSettingsService: GroupSettingsService) {}
 

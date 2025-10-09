@@ -50,10 +50,10 @@ CREATE TABLE IF NOT EXISTS groups (
 
 -- Create user_groups table (many-to-many relationship)
 CREATE TABLE IF NOT EXISTS user_groups (
-    user_id UUID NOT NULL,
+    user_id UUID NOT NULL REFERENCES users(uuid),
     group_id UUID NOT NULL REFERENCES groups(id),
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    added_by UUID,
+    added_by UUID REFERENCES users(uuid),
     PRIMARY KEY (user_id, group_id)
 );
 
