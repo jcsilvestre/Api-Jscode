@@ -5,31 +5,50 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        NODE_ENV: production
     container_name: jcscode-api
-    restart: unless-stopped
+    restart: always
     environment:
       - NODE_ENV=production
+      - TZ=America/Sao_Paulo
     env_file:
       - .env.production
     volumes:
       - ./logs:/app/logs
       - ./uploads:/app/uploads
+      - /etc/localtime:/etc/localtime:ro
     networks:
       - jcscode-network
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 40s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   nginx:
     image: nginx:alpine
     container_name: jcscode-nginx
-    restart: unless-stopped
+    restart: always
     ports:
       - "80:80"
       - "443:443"
@@ -38,51 +57,120 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./ssl:/etc/ssl:ro
       - ./nginx/html:/usr/share/nginx/html:ro
+      - /etc/localtime:/etc/localtime:ro
     networks:
       - jcscode-network
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "nginx", "-t"]
       interval: 30s
       timeout: 10s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
 
   postgres:
     image: postgres:15-alpine
     container_name: jcscode-postgres
-    restart: unless-stopped
+    restart: always
     environment:
       POSTGRES_DB: ${DB_DATABASE}
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+      TZ: America/Sao_Paulo
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - ./backups:/backups
+      - /etc/localtime:/etc/localtime:ro
     networks:
       - jcscode-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=all
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
 
   redis:
     image: redis:7-alpine
     container_name: jcscode-redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    restart: always
+    environment:
+      TZ: America/Sao_Paulo
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
     volumes:
       - redis_data:/data
+      - /etc/localtime:/etc/localtime:ro
     networks:
       - jcscode-network
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
 
-  # Optional: Database backup service
+  # Serviço de backup automático
   backup:
     image: postgres:15-alpine
     container_name: jcscode-backup
@@ -92,15 +180,44 @@ services:
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_HOST: postgres
+      TZ: America/Sao_Paulo
     volumes:
       - ./backups:/backups
-      - ./scripts/backup.sh:/backup.sh:ro
+      - ./scripts:/scripts:ro
+      - /etc/localtime:/etc/localtime:ro
     networks:
       - jcscode-network
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     profiles:
       - backup
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+
+  # Serviço de monitoramento (opcional)
+  watchtower:
+    image: containrrr/watchtower
+    container_name: jcscode-watchtower
+    restart: always
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=3600
+      - WATCHTOWER_INCLUDE_STOPPED=true
+      - TZ=America/Sao_Paulo
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/localtime:/etc/localtime:ro
+    profiles:
+      - monitoring
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
 
 volumes:
   postgres_data:
