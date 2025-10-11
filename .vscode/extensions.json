@@ -1,0 +1,46 @@
+{
+  "recommendations": [
+    // Docker
+    "ms-vscode-remote.remote-containers",
+    "ms-vscode.vscode-docker",
+    
+    // TypeScript & Node.js
+    "ms-vscode.vscode-typescript-next",
+    "ms-vscode.vscode-eslint",
+    "esbenp.prettier-vscode",
+    
+    // NestJS
+    "ashinzekene.nestjs",
+    "ms-vscode.vscode-json",
+    
+    // Database
+    "ms-mssql.mssql",
+    "cweijan.vscode-postgresql-client2",
+    
+    // API Testing
+    "rangav.vscode-thunder-client",
+    "humao.rest-client",
+    
+    // Git
+    "eamodio.gitlens",
+    "github.vscode-pull-request-github",
+    
+    // Utilities
+    "formulahendry.auto-rename-tag",
+    "bradlc.vscode-tailwindcss",
+    "ms-vscode.vscode-yaml",
+    "redhat.vscode-xml",
+    
+    // Markdown
+    "yzhang.markdown-all-in-one",
+    "shd101wyy.markdown-preview-enhanced",
+    
+    // Themes (optional)
+    "dracula-theme.theme-dracula",
+    "github.github-vscode-theme",
+    
+    // Mobile Development
+    "ms-vscode.vscode-react-native",
+    "expo.vscode-expo-tools"
+  ]
+}

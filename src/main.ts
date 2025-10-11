@@ -9,16 +9,28 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { SecurityLoggingInterceptor } from './common/interceptors/security-logging.interceptor';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import cookieParser from 'cookie-parser';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   
+  logger.log('🚀 INICIANDO BOOTSTRAP DA APLICAÇÃO...');
+  logger.log('🔧 VARIÁVEIS DE AMBIENTE:');
+  logger.log('   NODE_ENV: ' + process.env.NODE_ENV);
+  logger.log('   PORT: ' + process.env.PORT);
+  logger.log('   HOST: ' + process.env.HOST);
+  logger.log('   DATABASE_URL: ' + (process.env.DATABASE_URL ? 'DEFINIDA' : 'NÃO DEFINIDA'));
+  logger.log('   REDIS_URL: ' + (process.env.REDIS_URL ? 'DEFINIDA' : 'NÃO DEFINIDA'));
+
   try {
-    logger.log('🚀 Iniciando aplicação NestJS...');
-    
-    const app = await NestFactory.create(AppModule);
+    logger.log('🏗️ CRIANDO APLICAÇÃO NESTJS...');
+    const app = await NestFactory.create(AppModule, {
+      logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+    });
+    logger.log('✅ APLICAÇÃO NESTJS CRIADA COM SUCESSO');
     
     // Configurar Helmet para headers de segurança avançados
+    logger.log('🔒 CONFIGURANDO HELMET...');
     app.use(helmet({
       contentSecurityPolicy: {
         directives: {
@@ -55,15 +67,17 @@ async function bootstrap() {
       referrerPolicy: { policy: "strict-origin-when-cross-origin" },
       xssFilter: true, // X-XSS-Protection
     }));
-    logger.log('🔒 Helmet configurado para segurança');
+    logger.log('✅ HELMET CONFIGURADO PARA SEGURANÇA');
     
     // Configurar cookie parser
     app.use(cookieParser());
-    logger.log('🍪 Cookie parser configurado');
+    logger.log('✅ COOKIE PARSER CONFIGURADO');
     
     // Configurar CORS para permitir requisições do frontend e mobile
+    logger.log('🌐 CONFIGURANDO CORS...');
     const configService = app.get(ConfigService);
     const isProduction = configService.get('NODE_ENV') === 'production';
+    logger.log('📊 IS_PRODUCTION: ' + isProduction);
     
     const corsOrigins = isProduction ? [
       // Domínios de produção
@@ -110,20 +124,24 @@ async function bootstrap() {
       optionsSuccessStatus: 200, // Para suporte a navegadores legados
       preflightContinue: false,
     });
-    logger.log('🌐 CORS configurado para web e mobile');
+    logger.log('✅ CORS CONFIGURADO PARA WEB E MOBILE');
     
     // Configurar prefixo global da API apenas para rotas v1
     // Deixar /health e outras rotas básicas sem prefixo
+    logger.log('🔗 CONFIGURANDO PREFIXO GLOBAL...');
     app.setGlobalPrefix('v1', {
       exclude: [
         { path: 'health', method: RequestMethod.GET },
         { path: '', method: RequestMethod.GET },
         { path: 'docs', method: RequestMethod.GET },
+        { path: 'api', method: RequestMethod.GET },
+        { path: 'api/(.*)', method: RequestMethod.GET },
       ]
     });
-    logger.log('🔗 Prefixo global configurado: /v1 (excluindo health, docs e raiz)');
+    logger.log('✅ PREFIXO GLOBAL CONFIGURADO: /v1 (excluindo health, docs, api e raiz)');
     
     // Configurar pipes globais para validação e sanitização
+    logger.log('🔧 CONFIGURANDO PIPES DE VALIDAÇÃO...');
     app.useGlobalPipes(new ValidationPipe({
       whitelist: true, // Remove propriedades não definidas no DTO
       forbidNonWhitelisted: true, // Rejeita requisições com propriedades extras
@@ -136,188 +154,165 @@ async function bootstrap() {
       stopAtFirstError: false, // Mostra todos os erros de validação
     }));
     
-    logger.log('✅ Pipes de validação configurados');
+    logger.log('✅ PIPES DE VALIDAÇÃO CONFIGURADOS');
     
     // Configurar interceptors globais
+    logger.log('📊 CONFIGURANDO INTERCEPTORS...');
     app.useGlobalInterceptors(
       new LoggingInterceptor(),
       new SecurityLoggingInterceptor(),
     );
-    logger.log('📊 Interceptors de logging e segurança configurados');
+    logger.log('✅ INTERCEPTORS DE LOGGING E SEGURANÇA CONFIGURADOS');
     
     // Configurar filtro global de exceções
+    logger.log('🛡️ CONFIGURANDO FILTRO DE EXCEÇÕES...');
     app.useGlobalFilters(new AllExceptionsFilter());
-    logger.log('🛡️ Filtro global de exceções configurado');
+    logger.log('✅ FILTRO GLOBAL DE EXCEÇÕES CONFIGURADO');
+    
+    // Configurar Swagger/OpenAPI
+    logger.log('📚 CONFIGURANDO SWAGGER/OPENAPI...');
+    const config = new DocumentBuilder()
+      .setTitle('JCS Code API')
+      .setDescription('API completa para o sistema JCS Code com autenticação, usuários, projetos e muito mais')
+      .setVersion('1.0')
+      .addBearerAuth(
+        {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          name: 'JWT',
+          description: 'Enter JWT token',
+          in: 'header',
+        },
+        'JWT-auth',
+      )
+      .addTag('auth', 'Endpoints de autenticação')
+      .addTag('users', 'Gerenciamento de usuários')
+      .addTag('projects', 'Gerenciamento de projetos')
+      .addTag('health', 'Health checks')
+      .build();
+    
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api', app, document, {
+      swaggerOptions: {
+        persistAuthorization: true,
+      },
+    });
+    logger.log('✅ SWAGGER CONFIGURADO EM /api');
     
     // Verificar conexão e dados do banco
-    const dataSource = app.get(DataSource);
-    logger.log('🔗 Verificando conexão com PostgreSQL...');
-    
-    // LOGS DETALHADOS DA CONEXÃO
-    const options = dataSource.options as any;
-    logger.log(`🏢 HOST: ${options.host}`);
-    logger.log(`🔌 PORTA: ${options.port}`);
-    logger.log(`👤 USUÁRIO: ${options.username}`);
-    logger.log(`🗄️  BANCO DE DADOS: ${options.database}`);
-    logger.log(`📊 TIPO: ${options.type}`);
-    
+    logger.log('🗄️ VERIFICANDO CONEXÃO COM BANCO DE DADOS...');
     try {
+      const dataSource = app.get(DataSource);
+      logger.log('📊 DATASOURCE OBTIDO: ' + dataSource.isInitialized);
+      
+      // LOGS DETALHADOS DA CONEXÃO
+      const options = dataSource.options as any;
+      logger.log(`🏢 HOST: ${options.host}`);
+      logger.log(`🔌 PORTA: ${options.port}`);
+      logger.log(`👤 USUÁRIO: ${options.username}`);
+      logger.log(`🗄️  BANCO DE DADOS: ${options.database}`);
+      logger.log(`📊 TIPO: ${options.type}`);
+      
+      if (!dataSource.isInitialized) {
+        logger.log('🔄 INICIALIZANDO DATASOURCE...');
+        await dataSource.initialize();
+        logger.log('✅ DATASOURCE INICIALIZADO COM SUCESSO');
+      }
+      
+      // Verificar se consegue fazer uma query simples
+      logger.log('🔍 TESTANDO QUERY NO BANCO...');
+      const result = await dataSource.query('SELECT 1 as test');
+      logger.log('✅ QUERY DE TESTE EXECUTADA: ' + JSON.stringify(result));
+      
       // Verificar se a conexão está ativa
       if (dataSource.isInitialized) {
         logger.log('✅ Conexão com PostgreSQL estabelecida');
         logger.log(`🔗 URL de conexão: postgresql://${options.username}@${options.host}:${options.port}/${options.database}`);
         
         // Listar todas as tabelas
+        logger.log('📋 LISTANDO TABELAS DISPONÍVEIS...');
         const tables = await dataSource.query(`
           SELECT table_name 
           FROM information_schema.tables 
           WHERE table_schema = 'public'
+          ORDER BY table_name
         `);
-        logger.log(`📊 Tabelas encontradas no banco: ${tables.length}`);
-        tables.forEach(table => {
-          logger.log(`   - ${table.table_name}`);
-        });
+        logger.log('📊 TABELAS ENCONTRADAS: ' + tables.map(t => t.table_name).join(', '));
         
-        // Verificar dados na tabela users
-      const userCount = await dataSource.query('SELECT COUNT(*) as count FROM users');
-      logger.log(`👥 Total de usuários na tabela 'users': ${userCount[0].count}`);
-      
-      if (userCount[0].count > 0) {
-        const users = await dataSource.query('SELECT * FROM users ORDER BY id');
-        logger.log('📋 DADOS ATUAIS DA TABELA USERS NO POSTGRESQL:');
-        logger.log('='.repeat(60));
-        users.forEach(user => {
-          logger.log(`ID: ${user.id}`);
-          logger.log(`Nome: ${user.full_name}`);
-          logger.log(`Email: ${user.email}`);
-          logger.log(`Senha Hash: ${user.password_hash}`);
-          logger.log(`Verificado: ${user.is_verified}`);
-          logger.log(`Ativo: ${user.is_active}`);
-          logger.log(`Criado em: ${user.created_at}`);
-          logger.log(`Atualizado em: ${user.updated_at}`);
-          logger.log('-'.repeat(40));
-        });
-        logger.log('='.repeat(60));
-      } else {
-        logger.warn('⚠️  Tabela users está vazia! Criando dados de exemplo...');
+        // Verificar se a tabela users existe e tem dados
+        logger.log('👥 VERIFICANDO TABELA USERS...');
+        const userCount = await dataSource.query('SELECT COUNT(*) as count FROM users');
+        logger.log('📊 TOTAL DE USUÁRIOS: ' + userCount[0].count);
         
-        // Criar dados de exemplo com senhas hasheadas
-        const sampleUsers = [
-          {
-            full_name: 'Junio Silva',
-            email: 'junio@exemplo.com',
-            password_hash: await bcrypt.hash('senha123', 12),
-            is_verified: true,
-            is_active: true
-          },
-          {
-            full_name: 'Maria Santos',
-            email: 'maria@exemplo.com',
-            password_hash: await bcrypt.hash('senha456', 12),
-            is_verified: true,
-            is_active: true
-          },
-          {
-            full_name: 'Pedro Oliveira',
-            email: 'pedro@exemplo.com',
-            password_hash: await bcrypt.hash('senha789', 12),
-            is_verified: false,
-            is_active: true
-          }
-        ];
-        
-        for (const user of sampleUsers) {
-          logger.log(`🔄 INSERINDO USUÁRIO: ${user.full_name}`);
-          logger.log(`📧 Email: ${user.email}`);
-          logger.log(`🗄️  Executando no banco: ${options.database}`);
-          logger.log(`🏢 Host: ${options.host}:${options.port}`);
-          
-          const insertQuery = `
-            INSERT INTO users (full_name, email, password_hash, is_verified, is_active, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-          `;
-          
-          logger.log(`📝 SQL Query: ${insertQuery}`);
-          logger.log(`📊 Parâmetros: [${user.full_name}, ${user.email}, ${user.password_hash}, ${user.is_verified}, ${user.is_active}]`);
-          
-          try {
-            const result = await dataSource.query(insertQuery, [user.full_name, user.email, user.password_hash, user.is_verified, user.is_active]);
-            logger.log(`✅ SUCESSO: Usuário ${user.full_name} inserido no banco '${options.database}'`);
-            logger.log(`📊 Resultado da inserção:`, result);
-          } catch (insertError) {
-            logger.error(`❌ ERRO ao inserir usuário ${user.full_name}:`, insertError);
-          }
-          
-          logger.log('-'.repeat(50));
+        // Se não há usuários, inserir dados de exemplo
+        if (parseInt(userCount[0].count) === 0) {
+          logger.log('➕ INSERINDO USUÁRIO DE EXEMPLO...');
+          await dataSource.query(`
+            INSERT INTO users (name, email, password, role, is_active, created_at, updated_at) 
+            VALUES (
+              'Admin User', 
+              'admin@jcscode.com', 
+              '$2b$10$example.hash.for.password123', 
+              'admin', 
+              true, 
+              NOW(), 
+              NOW()
+            )
+          `);
+          logger.log('✅ USUÁRIO DE EXEMPLO INSERIDO');
+        } else {
+          // Mostrar dados existentes
+          logger.log('📋 USUÁRIOS EXISTENTES:');
+          const users = await dataSource.query('SELECT id, full_name, email, is_verified, is_active FROM users ORDER BY id LIMIT 5');
+          users.forEach(user => {
+            logger.log(`   - ID: ${user.id}, Nome: ${user.full_name}, Email: ${user.email}, Verificado: ${user.is_verified}, Ativo: ${user.is_active}`);
+          });
         }
-        
-        logger.log('🎉 Dados de exemplo criados com sucesso!');
-        
-        // Verificar novamente após inserção
-         const newUserCount = await dataSource.query('SELECT COUNT(*) as count FROM users');
-         logger.log(`👥 Total de usuários após inserção: ${newUserCount[0].count}`);
-         
-         // Mostrar todos os dados inseridos
-         const allUsers = await dataSource.query('SELECT * FROM users ORDER BY id');
-         logger.log('📋 DADOS COMPLETOS DA TABELA USERS NO POSTGRESQL:');
-         logger.log('='.repeat(60));
-         allUsers.forEach(user => {
-           logger.log(`ID: ${user.id}`);
-           logger.log(`Nome: ${user.full_name}`);
-           logger.log(`Email: ${user.email}`);
-           logger.log(`Senha Hash: ${user.password_hash}`);
-           logger.log(`Verificado: ${user.is_verified}`);
-           logger.log(`Ativo: ${user.is_active}`);
-           logger.log(`Criado em: ${user.created_at}`);
-           logger.log(`Atualizado em: ${user.updated_at}`);
-           logger.log('-'.repeat(40));
-         });
-         logger.log('='.repeat(60));
-       }
-        
       } else {
-        logger.error('❌ Conexão com PostgreSQL não foi estabelecida');
+        logger.error('❌ CONEXÃO COM BANCO NÃO ESTÁ ATIVA');
       }
     } catch (error) {
-      logger.error(`❌ Erro ao verificar banco de dados: ${error.message}`);
+      logger.error('❌ ERRO NA VERIFICAÇÃO DO BANCO:', error.message);
+      logger.error('🔍 STACK TRACE:', error.stack);
     }
     
-    const port = process.env.PORT ?? 3000;
-    const host = process.env.HOST ?? '0.0.0.0'; // Permite acesso de qualquer IP na rede
+    // Iniciar servidor
+    const port = process.env.PORT || 3000;
+    const host = process.env.HOST || '0.0.0.0';
+    
+    logger.log('🚀 INICIANDO SERVIDOR...');
+    logger.log('🔧 CONFIGURAÇÕES DO SERVIDOR:');
+    logger.log('   📍 HOST: ' + host);
+    logger.log('   🔌 PORTA: ' + port);
+    logger.log('   🌍 NODE_ENV: ' + process.env.NODE_ENV);
     
     await app.listen(port, host);
     
-    logger.log('📊 Configuração do banco:');
-    logger.log('   - Host: localhost:5432');
-    logger.log('   - Database: postgres');
-    logger.log('   - Username: postgres');
+    logger.log('✅ SERVIDOR INICIADO COM SUCESSO!');
+    logger.log('🌐 SERVIDOR RODANDO EM: http://' + host + ':' + port);
+    logger.log('📚 SWAGGER DISPONÍVEL EM: http://' + host + ':' + port + '/api');
+    logger.log('❤️  HEALTH CHECK EM: http://' + host + ':' + port + '/health');
     
-    const protocol = isProduction ? 'https' : 'http';
-    const baseUrl = isProduction ? 'api.jcscode.com' : `localhost:${port}`;
-    const appUrl = `${protocol}://${baseUrl}`;
-    
-    logger.log(`🌐 Aplicação rodando em: ${appUrl}`);
-    if (!isProduction) {
-      logger.log(`🌍 Acesso na rede local: http://[SEU_IP]:${port}`);
+    // Listar todas as rotas registradas
+    logger.log('🛣️ ROTAS REGISTRADAS:');
+    const server = app.getHttpServer();
+    const router = server._events.request._router;
+    if (router && router.stack) {
+      router.stack.forEach((layer, index) => {
+        if (layer.route) {
+          const methods = Object.keys(layer.route.methods).join(', ').toUpperCase();
+          logger.log(`   ${index + 1}. [${methods}] ${layer.route.path}`);
+        }
+      });
+    } else {
+      logger.log('   ⚠️ Não foi possível listar as rotas automaticamente');
     }
-    logger.log('📋 Endpoints disponíveis com novos aliases:');
-    logger.log('   - GET    /v1/umx     - Listar todos os usuários (User Matrix Exchange)');
-    logger.log('   - GET    /v1/tnt     - Listar todos os tenants');
-    logger.log('   - GET    /v1/gpx     - Listar todos os grupos (Group Process Exchange)');
-    logger.log('   - GET    /v1/gpcfg   - Configurações de grupos');
-    logger.log('   - GET    /v1/toh     - Histórico de propriedade de tenants');
-    logger.log('   - GET    /v1/ugx     - Vínculos usuário-grupo (User Group Crosslink)');
-    logger.log('   - GET    /v1/uga     - Auditoria de vínculos usuário-grupo');
-    logger.log('   - GET    /v1/uiv     - Convites de usuários (User Invite Vector)');
-    logger.log('   - GET    /v1/usrx    - Sessões de usuários (User Session Registry Exchange)');
-    logger.log('   - POST   /v1/auth/register - Registro de usuário com token por email');
-    logger.log('   - POST   /v1/auth/verify   - Verificação de token de registro');
-    logger.log('   - POST   /v1/auth/resend   - Reenvio de token de verificação');
-    logger.log('💡 Use Postman ou curl para testar a API');
     
+    logger.log('🎉 APLICAÇÃO PRONTA PARA RECEBER REQUISIÇÕES!');
   } catch (error) {
-    logger.error('❌ Erro ao iniciar aplicação:', error.message);
-    logger.error('Stack:', error.stack);
+    logger.error('💥 ERRO FATAL AO INICIAR APLICAÇÃO:', error.message);
+    logger.error('🔍 STACK TRACE COMPLETO:', error.stack);
     process.exit(1);
   }
 }

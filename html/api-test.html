@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JCS Code API - Teste de Endpoints</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .endpoint-section {
+            margin-bottom: 30px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .endpoint-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .endpoint-title {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .method-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            font-size: 0.8em;
+        }
+        
+        .get { background: #28a745; }
+        .post { background: #007bff; }
+        .put { background: #ffc107; color: #000; }
+        .delete { background: #dc3545; }
+        
+        .endpoint-body {
+            padding: 20px;
+        }
+        
+        .endpoint-url {
+            background: #f1f3f4;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin-bottom: 15px;
+            border-left: 4px solid #28a745;
+        }
+        
+        .test-button {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+        }
+        
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+        
+        .response-area {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+            display: none;
+        }
+        
+        .response-area.show {
+            display: block;
+        }
+        
+        .response-header {
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+        
+        .response-content {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .loading {
+            color: #ffc107;
+        }
+        
+        .success {
+            color: #28a745;
+        }
+        
+        .error {
+            color: #dc3545;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-200 { background: #28a745; }
+        .status-404 { background: #ffc107; }
+        .status-500 { background: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 JCS Code API</h1>
+            <p>Teste de Endpoints - Produção 24/7</p>
+        </div>
+        
+        <div class="content">
+            <!-- Health Check -->
+            <div class="endpoint-section">
+                <div class="endpoint-header">
+                    <span class="endpoint-title">Health Check</span>
+                    <span class="method-badge get">GET</span>
+                </div>
+                <div class="endpoint-body">
+                    <div class="endpoint-url">/health</div>
+                    <button class="test-button" onclick="testEndpoint('/health', 'health')">
+                        🔍 Testar Health Check
+                    </button>
+                    <div id="health-response" class="response-area">
+                        <div class="response-header">Resposta:</div>
+                        <div id="health-content" class="response-content"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Database Views -->
+            <div class="endpoint-section">
+                <div class="endpoint-header">
+                    <span class="endpoint-title">Database Views - Lista de Endpoints</span>
+                    <span class="method-badge get">GET</span>
+                </div>
+                <div class="endpoint-body">
+                    <div class="endpoint-url">/v1/dbv</div>
+                    <button class="test-button" onclick="testEndpoint('/v1/dbv', 'dbv')">
+                        📋 Listar Endpoints Disponíveis
+                    </button>
+                    <div id="dbv-response" class="response-area">
+                        <div class="response-header">Resposta:</div>
+                        <div id="dbv-content" class="response-content"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Active Users -->
+            <div class="endpoint-section">
+                <div class="endpoint-header">
+                    <span class="endpoint-title">Usuários Ativos</span>
+                    <span class="method-badge get">GET</span>
+                </div>
+                <div class="endpoint-body">
+                    <div class="endpoint-url">/v1/dbv/active-users</div>
+                    <button class="test-button" onclick="testEndpoint('/v1/dbv/active-users', 'users')">
+                        👥 Listar Usuários Ativos
+                    </button>
+                    <div id="users-response" class="response-area">
+                        <div class="response-header">Resposta:</div>
+                        <div id="users-content" class="response-content"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Groups with Member Count -->
+            <div class="endpoint-section">
+                <div class="endpoint-header">
+                    <span class="endpoint-title">Grupos com Contagem de Membros</span>
+                    <span class="method-badge get">GET</span>
+                </div>
+                <div class="endpoint-body">
+                    <div class="endpoint-url">/v1/dbv/groups-with-member-count</div>
+                    <button class="test-button" onclick="testEndpoint('/v1/dbv/groups-with-member-count', 'groups')">
+                        👥 Listar Grupos
+                    </button>
+                    <div id="groups-response" class="response-area">
+                        <div class="response-header">Resposta:</div>
+                        <div id="groups-content" class="response-content"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tenant Stats -->
+            <div class="endpoint-section">
+                <div class="endpoint-header">
+                    <span class="endpoint-title">Estatísticas de Tenants</span>
+                    <span class="method-badge get">GET</span>
+                </div>
+                <div class="endpoint-body">
+                    <div class="endpoint-url">/v1/dbv/tenant-stats</div>
+                    <button class="test-button" onclick="testEndpoint('/v1/dbv/tenant-stats', 'tenants')">
+                        📊 Ver Estatísticas
+                    </button>
+                    <div id="tenants-response" class="response-area">
+                        <div class="response-header">Resposta:</div>
+                        <div id="tenants-content" class="response-content"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Users Management -->
+            <div class="endpoint-section">
+                <div class="endpoint-header">
+                    <span class="endpoint-title">Gestão de Usuários (UMX)</span>
+                    <span class="method-badge get">GET</span>
+                </div>
+                <div class="endpoint-body">
+                    <div class="endpoint-url">/v1/umx</div>
+                    <button class="test-button" onclick="testEndpoint('/v1/umx', 'umx')">
+                        🔧 Testar Gestão de Usuários
+                    </button>
+                    <div id="umx-response" class="response-area">
+                        <div class="response-header">Resposta:</div>
+                        <div id="umx-content" class="response-content"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function testEndpoint(endpoint, responseId) {
+            const responseArea = document.getElementById(`${responseId}-response`);
+            const responseContent = document.getElementById(`${responseId}-content`);
+            
+            // Mostrar área de resposta
+            responseArea.classList.add('show');
+            
+            // Mostrar loading
+            responseContent.innerHTML = '⏳ Carregando...';
+            responseContent.className = 'response-content loading';
+            
+            try {
+                const response = await fetch(`http://localhost${endpoint}`);
+                const data = await response.json();
+                
+                // Formatar resposta
+                const formattedResponse = {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries()),
+                    data: data
+                };
+                
+                responseContent.innerHTML = JSON.stringify(formattedResponse, null, 2);
+                responseContent.className = response.ok ? 'response-content success' : 'response-content error';
+                
+            } catch (error) {
+                responseContent.innerHTML = `❌ Erro: ${error.message}`;
+                responseContent.className = 'response-content error';
+            }
+        }
+        
+        // Testar health check automaticamente ao carregar
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                testEndpoint('/health', 'health');
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

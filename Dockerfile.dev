@@ -1,0 +1,46 @@
+# Development Dockerfile for JCSCode API
+FROM node:18-alpine
+
+# Install development tools
+RUN apk add --no-cache \
+    curl \
+    wget \
+    git \
+    bash \
+    vim \
+    htop
+
+# Set working directory
+WORKDIR /app
+
+# Create non-root user for development
+RUN addgroup -g 1001 -S nestjs && \
+    adduser -S nestjs -u 1001 -G nestjs
+
+# Copy package files
+COPY package*.json ./
+COPY tsconfig*.json ./
+COPY nest-cli.json ./
+
+# Install ALL dependencies (including dev dependencies)
+RUN npm ci
+
+# Copy source code
+COPY --chown=nestjs:nestjs . .
+
+# Create necessary directories
+RUN mkdir -p /app/dist /app/logs && \
+    chown -R nestjs:nestjs /app
+
+# Switch to non-root user
+USER nestjs
+
+# Expose ports
+EXPOSE 3000 9229
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+# Development command with hot reload and debugging
+CMD ["npm", "run", "start:dev"]
